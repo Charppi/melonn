@@ -9,6 +9,6 @@ export class SellOrderController {
 
     @Post()
     create(@Body() sellOrder: CreateOrderDto) {
-        this.createSellOrderService.createSellOrder(sellOrder);
+        return this.createSellOrderService.createSellOrder(sellOrder);
     }
 }

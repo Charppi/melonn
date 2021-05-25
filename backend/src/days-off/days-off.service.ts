@@ -1,11 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import moment from 'moment';
 import { axiosInstance } from 'src/axios/config';
+import * as moment from 'moment';
 
 @Injectable()
 export class DaysOffService {
 
-    async isDayOff(currentDate: string, daysOff: string[]) {
+    isDayOff(currentDate: string, daysOff: string[]) {
         return daysOff.some((date: string) => date === currentDate);
     }
 
@@ -19,8 +19,8 @@ export class DaysOffService {
 
         while (businessDays.length <= 10) {
             const index = businessDays.length + 1;
-            const businessDay = now.add(index, 'day')
-            const businessDayFormatted = businessDay.format("YYY-MM-DD");
+            const businessDay = now.add(index, 'days');
+            const businessDayFormatted = businessDay.format("YYYY-MM-DD");
             const isDayOff = daysOff.some(date => date === businessDayFormatted);
             if (!isDayOff) {
                 businessDays.push(businessDayFormatted)

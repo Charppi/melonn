@@ -6,7 +6,7 @@ export class CreateOrderDto {
     sellerStore: string;
 
     @IsString()
-    orderNumber: string;
+    orderNumber: number;
 
     @IsNumber()
     shippingMethod: number;
