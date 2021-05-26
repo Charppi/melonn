@@ -1,61 +1,54 @@
-import { IsEmail, IsNumber, IsString, ValidateNested } from "class-validator";
+import { Type } from "class-transformer";
+import { IsArray, IsEmail, IsNumber, IsString, ValidateNested } from "class-validator";
 
 export class CreateOrderDto {
 
     @IsString()
-    sellerStore: string;
-
-    @IsString()
-    orderNumber: number;
+    public sellerStore: string;
 
     @IsNumber()
-    shippingMethod: number;
+    public orderNumber: number;
+
+    @IsNumber()
+    public shippingMethod: number;
 
     @IsString()
-    buyerFullName: string;
+    public buyerFullName: string;
 
     @IsString()
-    buyerPhone: string;
+    public buyerPhone: string;
 
     @IsEmail()
-    buyerEmail: string;
+    public buyerEmail: string;
 
     @IsString()
-    shippingAddress: string;
+    public shippingAddress: string;
 
     @IsString()
-    shippingCity: string;
+    public shippingCity: string;
 
     @IsString()
-    shippingRegion: string;
+    public shippingRegion: string;
 
     @IsString()
-    shippingCountry: string;
+    public shippingCountry: string;
 
-    @ValidateNested()
-    items: Item[]
+    @IsArray()
+    @Type(() => Item)
+    @ValidateNested({ each: true })
+    public items: Item[]
 
-    creationDate?: string
-    internalOrderNumber?: string
-    packPromiseMin?: string
-    packPromiseMax?: string
-    shipPromiseMin?: string
-    shipPromiseMax?: string
-    deliveryPromiseMin?: string
-    deliveryPromiseMax?: string
-    readyPickupPromiseMin?: string
-    readyPickupPromiseMax?: string
 }
 
 export class Item {
 
     @IsString()
-    productName: string;
+    public productName: string;
 
     @IsNumber()
-    productQuantity: number;
+    public productQuantity: number;
 
     @IsNumber()
-    productWeight: number;
+    public productWeight: number;
 
 }

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { axiosInstance } from 'src/axios/config';
+import { axiosInstance } from '../axios/config';
 import * as moment from 'moment';
 
 @Injectable()

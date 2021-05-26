@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { axiosInstance } from 'src/axios/config';
+import { axiosInstance } from '../axios/config';
 
 export enum DaysTypes {
     ANY = "ANY",
@@ -49,7 +49,7 @@ export interface PromiseInterface {
 }
 
 export interface ByRequestTimeCondition {
-    dayType: PromisesTypes,
+    dayType: DaysTypes,
     fromTimeOfDay: number,
     toTimeOfDay: number
 }

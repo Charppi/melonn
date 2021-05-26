@@ -1,115 +1,116 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { DaysOffService } from 'src/days-off/days-off.service';
-import { db } from 'src/db';
-import { ShippingMethodService, DaysTypes, PromisesTypes, PromiseBody } from 'src/shipping-method/shipping-method.service';
-import { CreateOrderDto, Item } from './dtos/create-order.dto';
+import { DaysOffService } from '../../days-off/days-off.service';
+import { db } from '../../db';
+import { ShippingMethodService, DaysTypes, PromisesTypes, PromiseBody } from '../../shipping-method/shipping-method.service';
+import { CreateOrderDto, Item } from '../dtos/create-order.dto';
 import * as moment from 'moment';
+import { CreateSellOrderValidations } from './create-sell-order-validations';
 
+export class CreateOrderResponse extends CreateOrderDto {
+    creationDate: string
+    internalOrderNumber: string
+    packPromiseMin: string
+    packPromiseMax: string
+    shipPromiseMin: string
+    shipPromiseMax: string
+    deliveryPromiseMin: string
+    deliveryPromiseMax: string
+    readyPickupPromiseMin: string
+    readyPickupPromiseMax: string
+    shippingMethodName: string
+}
 
 @Injectable()
 export class CreateSellOrderService {
 
     constructor(
         private shippingMethodService: ShippingMethodService,
-        private daysOffService: DaysOffService
+        private daysOffService: DaysOffService,
+        private validations: CreateSellOrderValidations
     ) { }
 
-    async createSellOrder(sellOrder: CreateOrderDto) {
+    public async createSellOrder(data: CreateOrderDto) {
         let created = false;
-        const { rules } = await this.shippingMethodService.getShippingMethod(sellOrder.shippingMethod);
+        this.validations.validateItems(data);
+        const { rules, name } = await this.shippingMethodService.getShippingMethod(data.shippingMethod);
         const { cases } = rules.promisesParameters;
         const daysOff = await this.daysOffService.getDaysOff();
         const businessDay = this.daysOffService.getNext10BusinessDays(daysOff);
         const now = moment();
-
+        let sellOrder: CreateOrderResponse = this.setSellOrder(data);
         sellOrder.internalOrderNumber = this.setInternalOrderNumber(now);
         sellOrder.creationDate = now.utc().format();
-
+        sellOrder.shippingMethodName = name;
         const isDayOff = this.daysOffService.isDayOff(sellOrder.creationDate, daysOff);
-        const orderWeight = this.getorderWight(sellOrder.items);
-
+        const orderWeight = this.getOrderWeight(sellOrder.items);
         const { min, max } = rules.availability.byWeight
         let priority = 1;
-
-        if (!this.weightValidation(min, orderWeight, max)) {
+        if (!this.validations.weightValidation(min, orderWeight, max)) {
             sellOrder = this.setNullPromises(sellOrder);
             this.saveOrder(sellOrder);
             return sellOrder
         }
-
         const { dayType, fromTimeOfDay, toTimeOfDay } = rules.availability.byRequestTime;
-
-
-        this.validateNonBusinessandNotWeekend(dayType);
-
+        this.validations.validateNonBusinessandNotWeekend(dayType);
         if (isDayOff) {
             sellOrder = this.setNullPromises(sellOrder);
             this.saveOrder(sellOrder);
             return sellOrder
         }
-
         const hour = now.hour()
-        const dayValidation = (fromTimeOfDay <= hour) && (hour <= toTimeOfDay)
-
+        const dayValidation = this.validations.dayValidation(fromTimeOfDay, hour, toTimeOfDay)
         if (!dayValidation) {
             sellOrder = this.setNullPromises(sellOrder);
             this.saveOrder(sellOrder);
             return sellOrder
         }
-
-
         do {
             const workingCase = this.getCaseByPriority(priority, cases);
-
-            this.validateWorkingCase(workingCase);
-
+            this.validations.validateWorkingCase(workingCase);
             const {
                 workingCaseDayType,
                 workingCaseToTimeOfDay,
                 workingCaseFromTimeOfDay
             } = this.getWorkingCaseData(workingCase.condition.byRequestTime);
+            this.validations.validateNonBusinessandNotWeekend(workingCaseDayType);
 
-
-            this.validateNonBusinessAndNotWeekendDay(workingCaseDayType);
-
-            if (this.isBusinessDayAndIsDayOff(workingCaseDayType, isDayOff)) {
+            if (this.validations.isBusinessDayAndIsDayOff(workingCaseDayType, isDayOff)) {
                 priority++;
                 continue;
             }
-
-            if (!this.workingDayValidation(workingCaseFromTimeOfDay, hour, workingCaseToTimeOfDay)) {
+            if (!this.validations.workingDayValidation(workingCaseFromTimeOfDay, hour, workingCaseToTimeOfDay)) {
                 priority++;
                 continue;
             }
-
             sellOrder = this.setPromises(workingCase, sellOrder, now, businessDay);
-
             created = true;
-
         }
         while (!created)
-
         this.saveOrder(sellOrder);
-
         return sellOrder;
 
     }
 
-    private isBusinessDayAndIsDayOff = (workingCaseDayType: string, isDayOff: boolean) => {
-        return workingCaseDayType === DaysTypes.BUSINESS && isDayOff
+
+
+    private setSellOrder(data: CreateOrderDto) {
+        const sellOrder = new CreateOrderResponse();
+        sellOrder.buyerEmail = data.buyerEmail;
+        sellOrder.buyerFullName = data.buyerFullName;
+        sellOrder.buyerPhone = data.buyerPhone;
+        sellOrder.orderNumber = data.orderNumber;
+        sellOrder.sellerStore = data.sellerStore;
+        sellOrder.shippingAddress = data.shippingAddress;
+        sellOrder.shippingCity = data.shippingCity;
+        sellOrder.shippingCountry = data.shippingCountry;
+        sellOrder.shippingMethod = data.shippingMethod;
+        sellOrder.shippingRegion = data.shippingRegion;
+        sellOrder.items = data.items;
+        return sellOrder
     }
 
-    private weightValidation(min: number, orderWeight: number, max: number) {
-        return (min <= orderWeight) && (orderWeight <= max);
-    }
 
-    private validateNonBusinessandNotWeekend(dayType: any) {
-        if (dayType === DaysTypes.NON_BUSINESS || dayType === DaysTypes.WEEKEND) {
-            throw new HttpException('Not for now', HttpStatus.FORBIDDEN);
-        }
-    }
-
-    private setPromises(workingCase: any, sellOrder: CreateOrderDto, now: moment.Moment, businessDay: string[]) {
+    private setPromises(workingCase: any, sellOrder: CreateOrderResponse, now: moment.Moment, businessDay: string[]) {
         const { packPromise, shipPromise, deliveryPromise, readyPickUpPromise } = workingCase;
 
         sellOrder.packPromiseMin = this.setPromise(packPromise.min, now, businessDay);
@@ -127,15 +128,6 @@ export class CreateSellOrderService {
         return sellOrder
     }
 
-    private workingDayValidation(workingCaseFromTimeOfDay: number, hour: number, workingCaseToTimeOfDay: number) {
-        return (workingCaseFromTimeOfDay <= hour) && (hour <= workingCaseToTimeOfDay);
-    }
-
-    private validateNonBusinessAndNotWeekendDay(workingCaseDayType: any) {
-        if (workingCaseDayType === DaysTypes.NON_BUSINESS || workingCaseDayType === DaysTypes.WEEKEND) {
-            throw new HttpException('Not for now', HttpStatus.FORBIDDEN);
-        }
-    }
 
     private getWorkingCaseData(workingCaseConditionByRequestTime: any) {
         const {
@@ -145,17 +137,11 @@ export class CreateSellOrderService {
         return { workingCaseDayType, workingCaseToTimeOfDay, workingCaseFromTimeOfDay };
     }
 
-    private validateWorkingCase(workingCase: any) {
-        if (!workingCase) {
-            throw new HttpException('This should not happen', HttpStatus.FORBIDDEN);
-        }
-    }
-
-    private saveOrder(sellOrder: CreateOrderDto) {
+    saveOrder(sellOrder: CreateOrderResponse) {
         db.push(`orders/${sellOrder.internalOrderNumber}`, sellOrder);
     }
 
-    private setNullPromises(sellOrder: CreateOrderDto) {
+    private setNullPromises(sellOrder: CreateOrderResponse) {
         sellOrder.packPromiseMin = null;
         sellOrder.packPromiseMax = null;
         sellOrder.shipPromiseMin = null;
@@ -181,11 +167,9 @@ export class CreateSellOrderService {
         return cases.find(workingCase => parseInt(workingCase.priority) === priority)
     }
 
-
-    private getorderWight(items: Item[]) {
+    private getOrderWeight(items: Item[]) {
         return items.map(item => item.productWeight).reduce((prev, next) => prev + next)
     }
-
 
     private setInternalOrderNumber(now: moment.Moment): string {
         return `MSE${now.unix()}${Math.floor(Math.random() * 100) + 1}`;
