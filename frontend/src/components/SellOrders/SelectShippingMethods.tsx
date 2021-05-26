@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { ShippingMethodsService } from '../../services/shipping-methods'
 
 interface ShippingMethod {
@@ -8,21 +8,23 @@ interface ShippingMethod {
 
 export const SelectShippingMethods: React.FC<{ onSelect(id: number): void }> = ({ onSelect }) => {
 
-    const [shippingMethod, setShippingMethod] = useState<ShippingMethod[]>([])
+    const [shippingMethod, setShippingMethod] = useState<ShippingMethod[]>([]);
 
-    const getShippingMethods = async () => {
-        const result = await ShippingMethodsService.getShippingMethods()
-        setShippingMethod(result);
-        onSelect(result[0])
-    }
+    const getShippingMethods = useCallback(async () => {
+        const result = await ShippingMethodsService.getShippingMethods();
+        if (result && result.length > 0) {
+            setShippingMethod(result);
+            onSelect(result[0].id)
+        }
+    }, [onSelect, setShippingMethod]);
 
     useEffect(() => {
-        getShippingMethods()
-    }, [])
+        getShippingMethods();
+    }, []);
 
     return <select onChange={(e) => onSelect(parseInt(e.target.value))} name="shippingMethod" className="form-select">
         {shippingMethod.map((sm, k) => {
             return <option key={k} value={sm.id}>{sm.name}</option>
         })}
-    </select>
+    </select>;
 }

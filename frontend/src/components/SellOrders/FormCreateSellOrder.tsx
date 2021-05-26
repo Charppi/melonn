@@ -10,7 +10,7 @@ import { Item } from './models/Item'
 import { SellOrder } from './models/SellOrder'
 import { SelectShippingMethods } from './SelectShippingMethods'
 import * as Yup from 'yup'
-import { confirmation } from '../../utils'
+import { confirmation, showMessage } from '../../utils'
 import { SellOrdersService } from '../../services/sell-orders'
 
 const yupString = Yup.string()
@@ -38,19 +38,21 @@ export const FormCreateSellOrder: React.FC = () => {
         buyerEmail: "",
         buyerFullName: "",
         buyerPhone: "",
-        orderNumber: "",
+        orderNumber: 0,
         sellerStore: "",
         shippingAddress: "",
         shippingCity: "",
         shippingCountry: "",
-        shippingMethod: "",
+        shippingMethod: 1,
         shippingRegion: "",
         items
     }
 
     const onSubmit = async (values: SellOrder) => {
+        if (items.length === 0) return showMessage("error", "Please ensure to add items to the sell order");
         const { value } = await confirmation(`Are you sure from create the sell order?`);
         if (value) {
+            values.items = items
             SellOrdersService.createSellOrder(values)
         }
     }
@@ -75,7 +77,6 @@ export const FormCreateSellOrder: React.FC = () => {
         setItems([...items.filter(i => i.productName !== item.productName)]);
     }
 
-
     return <form className="row" onSubmit={formik.handleSubmit}>
         <h3>Sell Information</h3>
         <FormGroup colMd="5" label="Seller Store">
@@ -85,13 +86,15 @@ export const FormCreateSellOrder: React.FC = () => {
             )}
         </FormGroup>
         <FormGroup colMd="3" label="Order Number">
-            <input onChange={formik.handleChange} type="text" name="orderNumber" className="form-control" />
+            <input onChange={formik.handleChange} type="number" name="orderNumber" className="form-control" />
             {formik.touched.orderNumber && formik.errors.orderNumber && (
                 <span className="text-danger">{formik.errors.orderNumber}</span>
             )}
         </FormGroup>
         <FormGroup colMd="4" label="Shipping Method">
-            <SelectShippingMethods onSelect={(id) => formik.setFieldValue("shippingMethod", id)} />
+            <SelectShippingMethods onSelect={(id) => {
+                formik.setValues({ ...formik.values, shippingMethod: id })
+            }} />
         </FormGroup>
 
         <FormGroup colMd="6" label="Buyer FullName">

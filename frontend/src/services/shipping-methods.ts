@@ -9,7 +9,7 @@ export class ShippingMethodsService {
             });
             return await result.json();
         } catch (error) {
-            showMessage("error", "An error has happened.")
+            showMessage("error", "An error has happened getting the shipping methods.")
         }
     }
 }

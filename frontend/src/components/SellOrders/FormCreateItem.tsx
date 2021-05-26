@@ -5,7 +5,7 @@ import { Item } from './models/Item'
 
 
 export const FormCreateItem: React.FC<{ onAddItem(item: Item): void }> = ({ onAddItem }) => {
-    const initialState = { productWeight: "", productQuantity: 0, productName: "" }
+    const initialState = { productWeight: 0, productQuantity: 0, productName: "" }
     const [item, setItem] = useState<Item>(initialState);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -14,10 +14,10 @@ export const FormCreateItem: React.FC<{ onAddItem(item: Item): void }> = ({ onAd
 
     const validateItem = () => {
         if (item.productName.length === 0) return showMessage("error", "Please fill the product name field");
-        if (item.productWeight.length === 0) return showMessage("error", "Please fill the product weight field");
+        if (item.productWeight <= 0) return showMessage("error", "Please fill the product weight field");
         if (item.productQuantity <= 0) return showMessage("error", "Please insert a valid product quantity");
-        item.productQuantity = Number(item.productQuantity)
-        onAddItem(item);
+        const itemCopy = { ...item, productWeight: Number(item.productWeight), productQuantity: Number(item.productWeight) }
+        onAddItem(itemCopy);
     }
 
     return <div className="row">
@@ -32,8 +32,8 @@ export const FormCreateItem: React.FC<{ onAddItem(item: Item): void }> = ({ onAd
         <FormGroup label="Quantity">
             <input type="number" value={item.productQuantity} onChange={handleChange} name="productQuantity" className="form-control" />
         </FormGroup>
-        <FormGroup label="Weight">
-            <input type="text" value={item.productWeight} onChange={handleChange} name="productWeight" className="form-control" />
+        <FormGroup label="KG Weight">
+            <input type="number" value={item.productWeight} onChange={handleChange} name="productWeight" className="form-control" />
         </FormGroup>
         <FormGroup>
             <button onClick={validateItem} className="btn btn-outline-primary" type="button">Add</button>
